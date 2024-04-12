@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up</title>
+</head>
+<body>
+    <h2>Sign Up</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="face">Face (Upload a pic):</label><br>
+        <input type="file" id="face" name="face" accept="image/*" required><br><br>
+
+        <label for="sleep_or_read">Sleep or Read?:</label><br>
+        <input type="radio" id="sleep_or_read1" name="sleep_or_read" value="Sleep" required>
+        <label for="sleep_or_read1">Sleep</label><br>
+        <input type="radio" id="sleep_or_read2" name="sleep_or_read" value="Read">
+        <label for="sleep_or_read2">Read</label><br><br>
+
+        <label for="ambient_noise">Ambient Noise Setting:</label><br>
+        <input type="radio" id="ambient_noise1" name="ambient_noise" value="Forest" required>
+        <label for="ambient_noise1">Forest</label><br>
+        <input type="radio" id="ambient_noise2" name="ambient_noise" value="Beach">
+        <label for="white_noise2">Beach</label><br><br>
+
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
