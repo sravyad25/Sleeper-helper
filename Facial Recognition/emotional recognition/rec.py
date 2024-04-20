@@ -2,8 +2,10 @@ from fer import FER
 import cv2
 import pprint
 
-img = cv2.imread("C:\\Users\\sravy\\OneDrive\\Desktop\\Personal projects\\Sleeper-helper\\web_interface\\uploads\\sravya2.jpeg")
-detector = FER(mtcnn=True)
+img = cv2.imread("/mnt/c/Users/krish/Documents/UIUC/ECE479/lab3_sleeper_helper/Sleeper-helper/web_interface/uploads/neutral.jpg")
+detector = FER()
 
-top_result, score = detector.top_emotion(img)
-pprint.pprint("Top Result:", top_result, "\tScore:", score)
+result = detector.top_emotion(img)
+
+print(result)
+
