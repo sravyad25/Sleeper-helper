@@ -8,6 +8,8 @@ import io
 from datetime import datetime
 import sqlite3
 from PIL import Image
+import pyttsx3
+# from fer import FER
 
 def capture_image(save_path="/home/admin/Sleeper-helper-1/Facial Recognition/PiCamera_captured_images_before_cropping"):
     """Capture an image from the Raspberry Pi camera and return it as a BGR numpy array."""
@@ -89,13 +91,15 @@ def create_feature_vectors(mtcnn, interpreter, uploads_folder):
 
 def get_user_info(db_path, face_filename):
     """Retrieve the user info from the database using the face image filename."""
+    # Extract just the filename without the path
+    face_filename = os.path.basename(face_filename)
+
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT name, sleep_or_read, ambient_noise FROM user_table WHERE face=?", (face_filename,))
     result = cursor.fetchone()
     conn.close()
     return result if result else None
-
 
 def main(args):
     print("Loading model and MTCNN detector...")
@@ -144,8 +148,7 @@ def main(args):
     for name, embedding in feature_vectors.items():
         dist = np.linalg.norm(embedding - face_embedding)
         distances.append(dist)
-        final_file_name = face_embeddings_path + "/" + name
-        filenames.append(final_file_name)
+        filenames.append(name)
         # print(f"Distance between {name} and the captured image:",
         
     import math
@@ -155,12 +158,16 @@ def main(args):
         if distances[i] < min_dist:
             min_dist = distances[i]
             min_file_name = filenames[i]
-    # print(min_dist)
-    # print(min_file_name)
+
     result = get_user_info(args.db_path, min_file_name)
-    print(result)
+    text= "Hello "+result[0]+"!"
     
-    
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+    # detector = FER()
+    # emotion, score = detector.top_emotion(Image.fromarray(cropped_face))
+    # print(f"Hello {result[0]}! you seem {emotion}. Would you like to talk about your day?")
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
