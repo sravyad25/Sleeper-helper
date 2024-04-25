@@ -4,8 +4,31 @@ import numpy as np
 from mtcnn.mtcnn import MTCNN
 from pycoral.utils.edgetpu import make_interpreter
 import argparse
+import io
+from datetime import datetime
+import sqlite3
+from PIL import Image
 
-# Assuming your preprocess_image and detect_and_crop functions are defined
+def capture_image(save_path="/home/admin/Sleeper-helper-1/Facial Recognition/PiCamera_captured_images_before_cropping"):
+    """Capture an image from the Raspberry Pi camera and return it as a BGR numpy array."""
+    from picamera import PiCamera
+    with PiCamera() as camera:
+        camera.resolution = (640, 480)
+        camera.start_preview()
+        stream = io.BytesIO()
+        camera.capture(stream, format='jpeg')
+        stream.seek(0)
+        camera.stop_preview()
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"captured_{timestamp}.jpg"
+    file_path = os.path.join(save_path, filename)
+    with open(file_path, "wb") as f:
+        f.write(stream.getvalue())
+        
+    image = Image.open(stream)
+    return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
 def detect_and_crop(mtcnn, image):
     """Detect faces in an image using MTCNN and return the largest detected face with added margin."""
     detection = mtcnn.detect_faces(image)[0]
@@ -33,20 +56,45 @@ def preprocess_image(face, target_size=(160, 160)):
     mean = face.mean()
     std = face.std()
     if std == 0:
-        face = face - mean  # Just remove the mean if std is zero
+        face = face - mean
     else:
         face = (face - mean) / std
     return face
 
 def run_model(interpreter, face):
     """Run the TensorFlow Lite model to generate embeddings for a given face."""
-    face_input = np.expand_dims(face, axis=0)  # Add batch dimension
+    face_input = np.expand_dims(face, axis=0)
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
     interpreter.set_tensor(input_details[0]['index'], face_input)
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
     return output_data
+
+def create_feature_vectors(mtcnn, interpreter, uploads_folder):
+    """Create a dictionary of preprocessed feature vectors for all images in the uploads folder."""
+    feature_vectors = {}
+    image_files = os.listdir(uploads_folder)
+    
+    for image_file in image_files:
+        image_path = os.path.join(uploads_folder, image_file)
+        image = cv2.imread(image_path)
+        face = detect_and_crop(mtcnn, image)
+        
+        if face is not None:
+            preprocessed_face = preprocess_image(face)
+            feature_vectors[image_file] = run_model(interpreter, preprocessed_face)
+    
+    return feature_vectors
+
+def get_user_info(db_path, face_filename):
+    """Retrieve the user info from the database using the face image filename."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, sleep_or_read, ambient_noise FROM user_table WHERE face=?", (face_filename,))
+    result = cursor.fetchone()
+    conn.close()
+    return result if result else None
 
 
 def main(args):
@@ -55,14 +103,12 @@ def main(args):
     interpreter.allocate_tensors()
     mtcnn = MTCNN()
     
-    # Create the "face_embeddings" folder if it doesn't exist
-    if not os.path.exists("/home/admin/Sleeper-helper-1/Facial Recognition/face_embeddings"):
+    face_embeddings_path = "/home/admin/Sleeper-helper-1/Facial Recognition/face_embeddings"
+    if not os.path.exists(face_embeddings_path):
         os.makedirs("face_embeddings")
-
-    # Path to the "uploads" folder
+        
     uploads_folder = "/home/admin/Sleeper-helper-1/web_interface/uploads"
 
-    # Get the list of image files in the "uploads" folder
     image_files = os.listdir(uploads_folder)
 
     # Process each image
@@ -72,7 +118,7 @@ def main(args):
         image = cv2.imread(image_path)
 
         # Detect and crop the face
-        face = detect_and_crop(mtcnn, image)  # Assuming mtcnn is defined elsewhere
+        face = detect_and_crop(mtcnn, image)
 
         # Preprocess the cropped face
         preprocessed_face = preprocess_image(face)
@@ -82,11 +128,9 @@ def main(args):
         np.save(preprocessed_image_path, preprocessed_face)
 
         print(f"Preprocessed and saved: {preprocessed_image_path}")
-    
+    feature_vectors = create_feature_vectors(mtcnn, interpreter, args.uploads_dir)
     print("Capturing image from PiCamera...")
-    # image = capture_image()
-    path = "/home/admin/Sleeper-helper-1/Facial Recognition/PiCamera_captured_images_before_cropping/test_photo.jpg"
-    image = cv2.imread(path)
+    image = capture_image()
     print("Detecting and cropping face...")
     cropped_face = detect_and_crop(mtcnn, image)
     
@@ -95,11 +139,28 @@ def main(args):
         face_preprocessed = preprocess_image(cropped_face)
         face_embedding = run_model(interpreter, face_preprocessed)
     
-    test = np.load("/home/admin/Sleeper-helper-1/Facial Recognition/face_embeddings/sravya2.npy")
+    distances = []
+    filenames = []
+    for name, embedding in feature_vectors.items():
+        dist = np.linalg.norm(embedding - face_embedding)
+        distances.append(dist)
+        final_file_name = face_embeddings_path + "/" + name
+        filenames.append(final_file_name)
+        # print(f"Distance between {name} and the captured image:",
+        
+    import math
+    min_dist = math.inf
+    min_file_name = None
+    for i in range(len(distances)):
+        if distances[i] < min_dist:
+            min_dist = distances[i]
+            min_file_name = filenames[i]
+    # print(min_dist)
+    # print(min_file_name)
+    result = get_user_info(args.db_path, min_file_name)
+    print(result)
     
-    test_vector = run_model(interpreter, test)
-    dist = np.linalg.norm(test_vector - face_embedding)
-    print("Distance between images:", dist)
+    
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
