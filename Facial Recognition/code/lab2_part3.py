@@ -18,7 +18,7 @@ model = InceptionResNetV1Norm()
 # print(model.summary())
 
 # model.load_weights("./weights/inception_keras_weights.h5")  # Has been translated from checkpoint
-model.load_weights("/mnt/c/Users/krish/Documents/UIUC/ECE479/lab2_sp24/code/weights/inception_keras_weights.h5")
+model.load_weights("/mnt/c/Users/krish/Documents/UIUC/ECE479/lab3_sleeper_helper/Sleeper-helper/Facial Recognition/code/weights/inception_keras_weights.h5")
 print(model.summary())
 print("Number of layers:", len(model.layers))
 
