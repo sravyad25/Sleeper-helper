@@ -33,7 +33,7 @@ def greet_user(name, emotion):
 
 def chat_with_chatgpt(prompt):
     """Sends text to ChatGPT and gets a response."""
-    openai.api_key = 'sk-proj-zoAfO3UXTjomKCdt5fjOT3BlbkFJF0a9EdfPWwoLkBHspMgg'  # Make sure to replace this with your actual API key
+    openai.api_key = 'your-api-key'  # Make sure to replace this with your actual API key
     completion = openai.Completion.create(model="davinci-002", prompt=prompt, max_tokens=10)
     return completion.choices[0].text
 
